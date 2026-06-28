@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>AM | ?????? ??????</title>
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #1e293b;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 3px solid #7c3aed;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { margin: 0; color: #a78bfa; }
+    .btn {
+      background: #7c3aed;
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .btn-outline { background: transparent; border: 1px solid #7c3aed; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+    .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-box input {
+      flex: 1;
+      padding: 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: white;
+      border-radius: 6px;
+    }
+    .anime-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 15px;
+    }
+    .anime-card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 10px;
+      position: relative;
+      transition: 0.3s;
+    }
+    .anime-card:hover { transform: translateY(-5px); }
+    .anime-card img { width: 100%; border-radius: 8px; height: 300px; object-fit: cover; }
+    .anime-card h3 { font-size: 14px; margin: 8px 0; }
+    .anime-card p { font-size: 12px; color: #94a3b8; margin: 0; }
+    .fav-btn {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(0,0,0,0.6);
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      cursor: pointer;
+    }
+    .fav-btn.active { color: #fbbf24; }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+    }
+    .modal-content {
+      background: #1e293b;
+      padding: 25px;
+      border-radius: 12px;
+      width: 300px;
+    }
+    .modal-content input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: white;
+      border-radius: 6px;
+    }
+    .tabs { margin: 20px 0; display: flex; gap: 10px; }
+    .tab-btn {
+      background: #334155;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    .tab-btn.active { background: #7c3aed; }
+    .loader { text-align: center; padding: 40px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AM</h1>
+    <div id="user-area">
+      <button class="btn" onclick="openModal()">????</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="???? ?? ????...">
+      <button class="btn" onclick="searchAnime()">???</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('top')">?????? ????</button>
+      <button class="tab-btn" onclick="showTab('season')">???? 2025</button>
+      <button class="tab-btn" onclick="showTab('fav')">??????? ?</button>
+    </div>
+
+    <div id="anime-list"><div class="loader">???? ???????...</div></div>
+    <div style="text-align:center;margin:20px;">
+      <button class="btn" id="loadMoreBtn" onclick="loadMore()">????? ??????</button>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" id="loginModal">
+    <div class="modal-content">
+      <h3>????? ????</h3>
+      <input type="text" id="username" placeholder="??? ????????">
+      <button class="btn" onclick="login()">????</button>
+      <button class="btn btn-outline" onclick="closeModal()">?????</button>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = localStorage.getItem('am_user');
+    let favorites = JSON.parse(localStorage.getItem('am_fav_' + currentUser) || '[]');
+    let currentTab = 'top';
+    let currentPage = 1;
+    let currentData = [];
+
+    const API = 'https://api.jikan.moe/v4';
+
+    // ????? ????
+    function login() {
+      const user = document.getElementById('username').value;
+      if(user.trim() === '') return alert('???? ??? ??????');
+      localStorage.setItem('am_user', user);
+      currentUser = user;
+      favorites = JSON.parse(localStorage.getItem('am_fav_' + currentUser) || '[]');
+      updateHeader();
+      closeModal();
+      renderAnime();
+    }
+
+    function logout() {
+      localStorage.removeItem('am_user');
+      currentUser = null;
+      favorites = [];
+      updateHeader();
+      renderAnime();
+    }
+
+    function updateHeader() {
+      const area = document.getElementById('user-area');
+      area.innerHTML = currentUser 
+        ? `<span>?????? ${currentUser}</span> <button class="btn btn-outline" onclick="logout()">????</button>`
+        : `<button class="btn" onclick="openModal()">????</button>`;
+    }
+
+    // ???????
+    function toggleFav(id) {
+      if(!currentUser) return alert('??? ???? ???');
+      if(favorites.includes(id)) {
+        favorites = favorites.filter(f => f !== id);
+      } else {
+        favorites.push(id);
+      }
+      localStorage.setItem('am_fav_' + currentUser, JSON.stringify(favorites));
+      renderAnime();
+    }
+
+    // ??? ?? Jikan API
+    async function fetchAnime(url) {
+      document.getElementById('anime-list').innerHTML = '<div class="loader">???? ???????...</div>';
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.data || [];
+      } catch(e) {
+        return [];
+      }
+    }
+
+    async function renderAnime() {
+      let url = '';
+      if(currentTab === 'top') url = `${API}/top/anime?page=${currentPage}&limit=24`;
+      if(currentTab === 'season') url = `${API}/seasons/2025/winter?page=${currentPage}&limit=24`;
+      if(currentTab === 'fav') {
+        currentData = currentData.filter(a => favorites.includes(a.mal_id));
+        return displayAnime(currentData);
+      }
+      
+      const data = await fetchAnime(url);
+      currentData = currentPage === 1 ? data : [...currentData, ...data];
+      displayAnime(currentData);
+    }
+
+    function displayAnime(data) {
+      const list = document.getElementById('anime-list');
+      if(data.length === 0) {
+        list.innerHTML = '<p style="text-align:center;color:#94a3b8;">?? ???? ?????</p>';
+        return;
+      }
+      list.innerHTML = `<div class="anime-grid">${data.map(a => `
+        <div class="anime-card">
+          <img src="${a.images.jpg.image_url}" alt="${a.title}">
+          <h3>${a.title}</h3>
+          <p>${a.type || 'TV'} | ${a.episodes || '?'} ???? | ? ${a.score || '-'}</p>
+          <a class="btn" href="${a.url}" target="_blank">MAL</a>
+          <button class="fav-btn ${favorites.includes(a.mal_id) ? 'active' : ''}" onclick="toggleFav(${a.mal_id})">бя</button>
+        </div>
+      `).join('')}</div>`;
+      document.getElementById('loadMoreBtn').disabled = data.length < 24;
+    }
+
+    async function searchAnime() {
+      const q = document.getElementById('searchInput').value;
+      if(!q) return;
+      currentTab = 'search';
+      currentPage = 1;
+      const data = await fetchAnime(`${API}/anime?q=${q}&limit=24`);
+      currentData = data;
+      displayAnime(data);
+    }
+
+    function showTab(tab) {
+      currentTab = tab;
+      currentPage = 1;
+      currentData = [];
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      renderAnime();
+    }
+
+    function loadMore() {
+      currentPage++;
+      renderAnime();
+    }
+
+    function openModal() { document.getElementById('loginModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('loginModal').style.display = 'none'; }
+
+    // ?????
+    updateHeader();
+    renderAnime();
+  </script>
+</body>
+</html>
