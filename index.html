@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>AM | ?????? ??????</title>
+  <title>انمي AM | مجاني فقط</title>
   <style>
     body {
       font-family: 'Tajawal', sans-serif;
@@ -234,7 +234,7 @@
           <h3>${a.title}</h3>
           <p>${a.type || 'TV'} | ${a.episodes || '?'} ???? | ? ${a.score || '-'}</p>
           <a class="btn" href="${a.url}" target="_blank">MAL</a>
-          <button class="fav-btn ${favorites.includes(a.mal_id) ? 'active' : ''}" onclick="toggleFav(${a.mal_id})">��</button>
+          <button class="fav-btn ${favorites.includes(a.mal_id) ? 'active' : ''}" onclick="toggleFav(${a.mal_id})">¡ï</button>
         </div>
       `).join('')}</div>`;
       document.getElementById('loadMoreBtn').disabled = data.length < 24;
